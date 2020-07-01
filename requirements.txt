@@ -1,3 +1,4 @@
 hadar
 jupyter
 plotly
+--find-links=dist/
