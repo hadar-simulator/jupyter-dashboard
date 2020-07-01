@@ -1,4 +1,3 @@
 hadar
 jupyter
-numpy
-pandas
+plotly
