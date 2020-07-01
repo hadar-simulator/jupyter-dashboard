@@ -6,28 +6,54 @@ import hadar as hd
 
 
 class Container:
+    """
+    Main component create tabs and plot inside
+    """
     def __init__(self, tabs: widgets, plotting):
         self.tabs = tabs
         self.plotting = plotting
         self.update(nodes=None, types=None, names=None)
 
     def update(self, nodes, types, names):
-        if nodes is None:
-            self.network()
-        elif types is None:
-            self.node(nodes)
-        elif names is not None:
-            self.element(nodes, types, names)
+        """
+        Single public access. Specify user choice for plotting selection
 
-    def network(self):
-        self.tabs.children = [self.rac(), self.exchanges()]
+        :param nodes: nodes name or None for all nodes
+        :param types: types name between [Consumptions, Productions, Links] or None for all node elements
+        :param names: element name
+        :return:
+        """
+        if nodes is None:
+            self._network()
+        elif types is None:
+            self._node(nodes)
+        elif names is not None:
+            self._element(nodes, types, names)
+
+    def _network(self):
+        """
+        Display network screen with RAC and Exchange tab.
+
+        :return:
+        """
+        self.tabs.children = [self._rac(), self._exchanges()]
         self.tabs.set_title(0, 'RAC')
         self.tabs.set_title(1, 'Exchange Map')
 
-    def rac(self):
+    def _rac(self):
+        """
+        Display RAC matrix.
+
+        :return:
+        """
         return go.FigureWidget(self.plotting.network().rac_matrix())
 
-    def exchanges(self):
+    def _exchanges(self):
+        """
+        Display Exchange matrix manage user interaction with time, scn and zoom sliders.
+
+        :return:
+        """
         def changes(time, scn, zoom):
             try:
                 display(go.FigureWidget(self.plotting.network().map(t=time, scn=scn, zoom=zoom)))
@@ -44,11 +70,23 @@ class Container:
         inter = interactive_output(changes, {'time': time, 'scn': scn, 'zoom': zoom})
         return widgets.VBox([hbox, inter])
 
-    def node(self, node: str):
-        self.tabs.children = [self.stack(node)]
+    def _node(self, node: str):
+        """
+        Display node screen with Stack tab.
+
+        :param node: node names
+        :return:
+        """
+        self.tabs.children = [self._stack(node)]
         self.tabs.set_title(0, 'Stack')
 
-    def stack(self, node: str):
+    def _stack(self, node: str):
+        """
+        Display stack graphics. Manage user interaction with scn slider and prod, cons choices.
+
+        :param node: node name
+        :return:
+        """
         def changes(scn, prod, cons):
             display(go.FigureWidget(self.plotting.node(node).stack(scn=scn, prod_kind=prod, cons_kind=cons)))
 
@@ -61,7 +99,15 @@ class Container:
         inter = interactive_output(changes, {'scn': scn, 'prod': prod, 'cons': cons})
         return widgets.VBox([hbox, inter])
 
-    def element(self, node: str, types: str, name: str):
+    def _element(self, node: str, types: str, name: str):
+        """
+        Display element screen with Timeline, Monotone and Gaussian tabs
+
+        :param node: node name
+        :param types: type name between [Consumptions, Productions, Links]
+        :param name: element name
+        :return:
+        """
         if types == 'Consumptions':
             p = self.plotting.consumption(node, name)
         elif types == 'Productions':
@@ -75,9 +121,21 @@ class Container:
         self.tabs.set_title(2, 'Gaussian')
 
     def timeline(self, plot):
+        """
+        Plot timeline graphics.
+
+        :param plot: PlotElement to use
+        :return:
+        """
         return go.FigureWidget(plot.timeline())
 
     def monotone(self, plot):
+        """
+        Plot monotone graphics manage user interactions with time and scn sliders.
+
+        :param plot: PlotElement to use
+        :return:
+        """
         def change(choice, time_v, scn_v):
             if choice == 'time':
                 scn.disabled = True
@@ -99,6 +157,12 @@ class Container:
         return widgets.VBox([hbox, inter])
 
     def gaussian(self, plot):
+        """
+        Plot gaussian graphics manage user interactions with time ans scn sliders
+
+        :param plot: plotElement to use
+        :return:
+        """
         def change(choice, time_v, scn_v):
             if choice == 'time':
                 scn.disabled = True
@@ -121,6 +185,13 @@ class Container:
 
 
 def navbar(study: hd.Study, tabs: Container):
+    """
+    Display top navbar. Manage interaction with user to select study element to plot.
+
+    :param study: study to use
+    :param tabs: container object to call when update
+    :return:
+    """
     nodes = widgets.Dropdown(options=['All'] + list(study.nodes.keys()),
                              value='All', description='Nodes', disabled=False)
     types = widgets.Dropdown(options=['Node', 'Consumptions', 'Productions', 'Links'],
@@ -167,6 +238,12 @@ def navbar(study: hd.Study, tabs: Container):
 
 
 def dashboard(plotting):
+    """
+    Entry point to display complete Dashboard.
+
+    :param plotting: Plotting implementation to use.
+    :return:
+    """
     tabs = widgets.Tab()
     container = Container(tabs, plotting)
     nav = navbar(plotting.agg.study, container)
