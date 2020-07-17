@@ -1,7 +1,7 @@
 # jupyter-dashboard
 
 Jupyter Dashboard repo provides `hadar_dashboard` python package which is an one-line jupyter widget to display a little dashboard and navigate into Hadar results.
-![Screenshost](screenshot.gif)
+![Screenshost](screenshot-dashboard.gif)
 
 ## Use it
 ``` python
