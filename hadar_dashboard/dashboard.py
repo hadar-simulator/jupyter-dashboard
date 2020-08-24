@@ -116,9 +116,10 @@ class Container:
         :return:
         """
         if types == 'Storage':
-            p = self.plotting.storage(node, name)
-            self.tabs.children = [self.candles(p)]
+            p = self.plotting.network(network).node(node).storage(name)
+            self.tabs.children = [self.candles(p), self.monotone(p)]
             self.tabs.set_title(0, 'Candles')
+            self.tabs.set_title(0, 'Monotone')
             return
 
         elif types == 'Consumptions':
@@ -196,6 +197,22 @@ class Container:
         inter = interactive_output(change, {'choice': choice, 'time_v': time, 'scn_v': scn})
         return widgets.VBox([hbox, inter])
 
+    def candles(self, plot):
+        """
+        Plot candle graphics manage user interactions with scn sliders
+        :param plot: plotElement to use
+        :return:
+        """
+        def change(scn_v):
+            display(go.FigureWidget(plot.gaussian(scn=scn_v)))
+
+        scn = widgets.IntSlider(value=0, min=0, description='scn', max=self.plotting.agg.nb_scn - 1,
+                                continuous_update=False, disabled=True)
+
+        inter = interactive_output(change, {'scn_v': scn})
+        return widgets.VBox([scn, inter])
+
+
 
 def navbar(study: hd.Study, tabs: Container):
     """
@@ -209,7 +226,7 @@ def navbar(study: hd.Study, tabs: Container):
                                 description='Networks', disable=False)
     nodes = widgets.Dropdown(options=['All'],
                              value='All', description='Nodes', disabled=False)
-    types = widgets.Dropdown(options=['Node', 'Consumptions', 'Productions', 'Links'],
+    types = widgets.Dropdown(options=['Node', 'Consumptions', 'Productions', 'Storage', 'Links'],
                              value='Node', description='elements', disabled=True)
     names = widgets.Dropdown(options=['None'], value='None', description='Names', disabled=True)
 
@@ -242,8 +259,10 @@ def navbar(study: hd.Study, tabs: Container):
                     el = [e.name for e in study.networks[networks.value].nodes[nodes.value].consumptions]
                 elif state['new'] == 'Productions':
                     el = [e.name for e in study.networks[networks.value].nodes[nodes.value].productions]
+                elif state['new'] == 'Storage':
+                    el = [e.name for e in study.networks[networks.value].nodes[nodes.value].storages]
                 elif state['new'] == 'Links':
-                    el = [e.name for e in study.networks[networks.value].nodes[nodes.value].links]
+                    el = [e.dest for e in study.networks[networks.value].nodes[nodes.value].links]
                 names.options = el
                 names.disabled = False
                 names_changes(dict(name='value', type='change', new=names.value))
