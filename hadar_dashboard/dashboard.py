@@ -12,51 +12,55 @@ class Container:
     def __init__(self, tabs: widgets, plotting):
         self.tabs = tabs
         self.plotting = plotting
-        self.update(nodes=None, types=None, names=None)
 
-    def update(self, nodes, types, names):
+    def update(self, network: str, node: str, type: str, name: str):
         """
         Single public access. Specify user choice for plotting selection
 
-        :param nodes: nodes name or None for all nodes
-        :param types: types name between [Consumptions, Productions, Links] or None for all node elements
-        :param names: element name
+        :param network: network name
+        :param node: nodes name or None for all nodes
+        :param type: types name between [Consumptions, Productions, Links] or None for all node elements
+        :param name: element name
         :return:
         """
-        if nodes is None:
-            self._network()
-        elif types is None:
-            self._node(nodes)
-        elif names is not None:
-            self._element(nodes, types, names)
+        if network is None:
+          return
+        elif node is None:
+            self._network(network)
+        elif type is None:
+            self._node(network, node)
+        elif name is not None:
+            self._element(network, node, type, name)
 
-    def _network(self):
+    def _network(self, network: str):
         """
         Display network screen with RAC and Exchange tab.
 
         :return:
         """
-        self.tabs.children = [self._rac(), self._exchanges()]
+        self.tabs.children = [self._rac(network), self._exchanges(network)]
         self.tabs.set_title(0, 'RAC')
         self.tabs.set_title(1, 'Exchange Map')
 
-    def _rac(self):
+    def _rac(self, network: str):
         """
         Display RAC matrix.
+        :param network: network name
 
         :return:
         """
-        return go.FigureWidget(self.plotting.network().rac_matrix())
+        return go.FigureWidget(self.plotting.network(network).rac_matrix())
 
-    def _exchanges(self):
+    def _exchanges(self, network: str):
         """
         Display Exchange matrix manage user interaction with time, scn and zoom sliders.
+        :param network: network name
 
         :return:
         """
         def changes(time, scn, zoom):
             try:
-                display(go.FigureWidget(self.plotting.network().map(t=time, scn=scn, zoom=zoom)))
+                display(go.FigureWidget(self.plotting.network(network).map(t=time, scn=scn, zoom=zoom)))
             except ValueError:
                 pass
 
@@ -70,25 +74,27 @@ class Container:
         inter = interactive_output(changes, {'time': time, 'scn': scn, 'zoom': zoom})
         return widgets.VBox([hbox, inter])
 
-    def _node(self, node: str):
+    def _node(self, network: str, node: str):
         """
         Display node screen with Stack tab.
 
+        :param network: network name
         :param node: node names
         :return:
         """
-        self.tabs.children = [self._stack(node)]
+        self.tabs.children = [self._stack(network, node)]
         self.tabs.set_title(0, 'Stack')
 
-    def _stack(self, node: str):
+    def _stack(self, network: str, node: str):
         """
         Display stack graphics. Manage user interaction with scn slider and prod, cons choices.
 
+        :param network: network name
         :param node: node name
         :return:
         """
         def changes(scn, prod, cons):
-            display(go.FigureWidget(self.plotting.node(node).stack(scn=scn, prod_kind=prod, cons_kind=cons)))
+            display(go.FigureWidget(self.plotting.network(network).node(node).stack(scn=scn, prod_kind=prod, cons_kind=cons)))
 
         scn = widgets.IntSlider(value=0, min=0, description='scn', max=self.plotting.agg.nb_scn - 1,
                                 continuous_update=False, disabled=False)
@@ -99,21 +105,28 @@ class Container:
         inter = interactive_output(changes, {'scn': scn, 'prod': prod, 'cons': cons})
         return widgets.VBox([hbox, inter])
 
-    def _element(self, node: str, types: str, name: str):
+    def _element(self, network: str, node: str, types: str, name: str):
         """
         Display element screen with Timeline, Monotone and Gaussian tabs
 
+        :param network: network name
         :param node: node name
         :param types: type name between [Consumptions, Productions, Links]
         :param name: element name
         :return:
         """
-        if types == 'Consumptions':
-            p = self.plotting.consumption(node, name)
+        if types == 'Storage':
+            p = self.plotting.storage(node, name)
+            self.tabs.children = [self.candles(p)]
+            self.tabs.set_title(0, 'Candles')
+            return
+
+        elif types == 'Consumptions':
+            p = self.plotting.network(network).node(node).consumption(name)
         elif types == 'Productions':
-            p = self.plotting.production(node, name)
+            p = self.plotting.network(network).node(node).production(name)
         elif types == 'Links':
-            p = self.plotting.link(node, name)
+            p = self.plotting.network(network).node(node).link(name)
 
         self.tabs.children = [self.timeline(p), self.monotone(p), self.gaussian(p)]
         self.tabs.set_title(0, 'Timeline')
@@ -192,18 +205,27 @@ def navbar(study: hd.Study, tabs: Container):
     :param tabs: container object to call when update
     :return:
     """
-    nodes = widgets.Dropdown(options=['All'] + list(study.nodes.keys()),
+    networks = widgets.Dropdown(options=list(study.networks.keys()),
+                                description='Networks', disable=False)
+    nodes = widgets.Dropdown(options=['All'],
                              value='All', description='Nodes', disabled=False)
     types = widgets.Dropdown(options=['Node', 'Consumptions', 'Productions', 'Links'],
                              value='Node', description='elements', disabled=True)
     names = widgets.Dropdown(options=['None'], value='None', description='Names', disabled=True)
+
+    def networks_changes(state):
+        if state['name'] == 'value' and state['type'] == 'change':
+            nodes.options = ['All'] + list(study.networks[state['new']].nodes.keys())
+            nodes_changes(dict(name='value', type='change', new=nodes.value))
+
+    networks.observe(networks_changes)
 
     def nodes_changes(state):
         if state['name'] == 'value' and state['type'] == 'change':
             if state['new'] == 'All':
                 types.disabled = True
                 names.disabled = True
-                tabs.update(nodes=None, types=None, names=None)
+                tabs.update(network=networks.value, node=None, type=None, name=None)
             else:
                 types.disabled = False
                 types_changes(dict(name='value', type='change', new=types.value))
@@ -214,14 +236,14 @@ def navbar(study: hd.Study, tabs: Container):
         if state['name'] == 'value' and state['type'] == 'change':
             if state['new'] == 'Node':
                 names.disabled = True
-                tabs.update(nodes=nodes.value, types=None, names=None)
+                tabs.update(network=networks.value, node=nodes.value, type=None, name=None)
             else:
                 if state['new'] == 'Consumptions':
-                    el = [e.name for e in study.nodes[nodes.value].consumptions]
+                    el = [e.name for e in study.networks[networks.value].nodes[nodes.value].consumptions]
                 elif state['new'] == 'Productions':
-                    el = [e.name for e in study.nodes[nodes.value].productions]
+                    el = [e.name for e in study.networks[networks.value].nodes[nodes.value].productions]
                 elif state['new'] == 'Links':
-                    el = [e.name for e in study.nodes[nodes.value].links]
+                    el = [e.name for e in study.networks[networks.value].nodes[nodes.value].links]
                 names.options = el
                 names.disabled = False
                 names_changes(dict(name='value', type='change', new=names.value))
@@ -230,11 +252,12 @@ def navbar(study: hd.Study, tabs: Container):
 
     def names_changes(state):
         if state['name'] == 'value' and state['type'] == 'change':
-            tabs.update(nodes=nodes.value, types=types.value, names=names.value)
+            tabs.update(network=networks.value, node=nodes.value, type=types.value, name=names.value)
 
     names.observe(names_changes)
 
-    return widgets.HBox([nodes, types, names])
+    networks_changes(dict(name='value', type='change', new=networks.value))
+    return widgets.HBox([networks, nodes, types, names])
 
 
 def dashboard(plotting):
