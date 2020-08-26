@@ -4,7 +4,7 @@ import hadar_dashboard
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-with open('dependancies.txt', 'r') as f:
+with open('requirements.txt', 'r') as f:
     requirements = f.read().split('\n')
 
 setuptools.setup(

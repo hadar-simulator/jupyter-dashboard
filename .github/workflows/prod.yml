@@ -27,7 +27,7 @@ jobs:
         wget https://raw.githubusercontent.com/hadar-simulator/hadar/master/examples/utils.py
         python3 utils.py --src=./ --check=./
 
-    - name: Release test.pypi.org
+    - name: Release pypi.org
       run: |
         export PYTHONPATH=$(pwd)
         pip install setuptools wheel twine
