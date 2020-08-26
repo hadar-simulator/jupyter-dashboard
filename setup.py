@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 with open('dependancies.txt', 'r') as f:
-    dependencies = f.read().split('\n')
+    requirements = f.read().split('\n')
 
 setuptools.setup(
     name="hadar_dashboard",
@@ -17,7 +17,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/hadar-simulator/jupyter-dashboard",
     packages=setuptools.find_packages(),
-    install_requires=dependencies,
+    install_requires=requirements,
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
