@@ -1,0 +1,37 @@
+name: prod
+on:
+  push:
+    branches:
+      - 'master'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.6
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.6
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Test notebooks
+      run: |
+        git lfs pull
+        export PYTHONPATH=$(pwd)
+        pip install click
+        cd examples
+        wget https://raw.githubusercontent.com/hadar-simulator/hadar/master/examples/utils.py
+        python3 utils.py --src=./ --check=./
+
+    - name: Release test.pypi.org
+      run: |
+        export PYTHONPATH=$(pwd)
+        pip install setuptools wheel twine
+        python3 setup.py sdist bdist_wheel
+        python3 -m twine upload dist/* -u __token__ -p $PYPI_TEST_TOKEN
+      env:
+        PYPI_TEST_TOKEN: ${{ secrets.PYPI_PROD_TOKEN }}

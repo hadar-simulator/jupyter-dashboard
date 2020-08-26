@@ -1,3 +1,5 @@
 from hadar_dashboard.dashboard import dashboard
+import hadar as hd
 
-__version__ = '0.4.0'
+# Dashboard use the same version than hadar
+__version__ = hd.__version__
