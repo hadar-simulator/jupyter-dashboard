@@ -119,7 +119,7 @@ class Container:
             p = self.plotting.network(network).node(node).storage(name)
             self.tabs.children = [self.candles(p), self.monotone(p)]
             self.tabs.set_title(0, 'Candles')
-            self.tabs.set_title(0, 'Monotone')
+            self.tabs.set_title(1, 'Monotone')
             return
 
         elif types == 'Consumptions':
@@ -128,6 +128,10 @@ class Container:
             p = self.plotting.network(network).node(node).production(name)
         elif types == 'Links':
             p = self.plotting.network(network).node(node).link(name)
+        elif types == 'To Converter':
+            p = self.plotting.network(network).node(node).to_converter(name)
+        elif types == 'From Converter':
+            p = self.plotting.network(network).node(node).from_converter(name)
 
         self.tabs.children = [self.timeline(p), self.monotone(p), self.gaussian(p)]
         self.tabs.set_title(0, 'Timeline')
@@ -204,10 +208,10 @@ class Container:
         :return:
         """
         def change(scn_v):
-            display(go.FigureWidget(plot.gaussian(scn=scn_v)))
+            display(go.FigureWidget(plot.candles(scn=scn_v)))
 
         scn = widgets.IntSlider(value=0, min=0, description='scn', max=self.plotting.agg.nb_scn - 1,
-                                continuous_update=False, disabled=True)
+                                continuous_update=False)
 
         inter = interactive_output(change, {'scn_v': scn})
         return widgets.VBox([scn, inter])
@@ -226,7 +230,7 @@ def navbar(study: hd.Study, tabs: Container):
                                 description='Networks', disable=False)
     nodes = widgets.Dropdown(options=['All'],
                              value='All', description='Nodes', disabled=False)
-    types = widgets.Dropdown(options=['Node', 'Consumptions', 'Productions', 'Storage', 'Links'],
+    types = widgets.Dropdown(options=['Node', 'Consumptions', 'Productions', 'Storage', 'Links', 'To Converter', 'From Converter'],
                              value='Node', description='elements', disabled=True)
     names = widgets.Dropdown(options=['None'], value='None', description='Names', disabled=True)
 
@@ -256,13 +260,17 @@ def navbar(study: hd.Study, tabs: Container):
                 tabs.update(network=networks.value, node=nodes.value, type=None, name=None)
             else:
                 if state['new'] == 'Consumptions':
-                    el = [e.name for e in study.networks[networks.value].nodes[nodes.value].consumptions]
+                    el = [c.name for c in study.networks[networks.value].nodes[nodes.value].consumptions]
                 elif state['new'] == 'Productions':
-                    el = [e.name for e in study.networks[networks.value].nodes[nodes.value].productions]
+                    el = [p.name for p in study.networks[networks.value].nodes[nodes.value].productions]
                 elif state['new'] == 'Storage':
-                    el = [e.name for e in study.networks[networks.value].nodes[nodes.value].storages]
+                    el = [s.name for s in study.networks[networks.value].nodes[nodes.value].storages]
                 elif state['new'] == 'Links':
-                    el = [e.dest for e in study.networks[networks.value].nodes[nodes.value].links]
+                    el = [l.dest for l in study.networks[networks.value].nodes[nodes.value].links]
+                elif state['new'] == 'To Converter':
+                    el = [v.name for v in study.converters.values() if (networks.value, nodes.value) in v.src_ratios.keys()]
+                elif state['new'] == 'From Converter':
+                    el = [v.name for v in study.converters.values() if networks.value == v.to_network and nodes.value == v.to_node]
                 names.options = el
                 names.disabled = False
                 names_changes(dict(name='value', type='change', new=names.value))
